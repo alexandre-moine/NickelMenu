@@ -75,6 +75,34 @@ NM_ACTION_(nickel_open) {
     if (dlsym(RTLD_DEFAULT, "_ZN11MainNavViewC1EP7QWidget")) {
         NM_LOG("nickel_open: detected firmware >15505 (new nav tab bar), checking special cases");
 
+        if (!strcmp(arg1, "library") && !strcmp(arg2, "godrive")) {
+            //libnickel 4.23.15505 * _ZN14MoreControllerC1Ev
+            MoreController *(*MoreController__MoreController)(MoreController* _this);
+            NM_ACT_XSYM(MoreController__MoreController, "_ZN14MoreControllerC1Ev", "could not dlsym MoreController::MoreController");
+            
+            //libnickel 4.23.15505 * _ZN14MoreController11googleDriveEv            
+            void (*MoreController_godrive)(MoreController* _this);
+            NM_ACT_XSYM(MoreController_godrive, "_ZN14MoreController11googleDriveEv", "could not dlsym MoreController::godrive");
+
+            //libnickel 4.23.15505 * _ZN14MoreControllerD0Ev
+            MoreController *(*MoreController__deMoreController)(MoreController* _this);
+            NM_ACT_XSYM(MoreController__deMoreController, "_ZN14MoreControllerD0Ev", "could not dlsym MoreController::~MoreController");
+
+            // As of at least 16704, maybye earlier, a MoreController is required.
+            // It seems 44 bytes is required, over allocate to be on the safe side
+            MoreController *mc = reinterpret_cast<MoreController*>(::operator new(128));
+            NM_CHECK(nullptr, mc, "could not allocate memory for MoreController");
+            mc = MoreController__MoreController(mc);
+            NM_CHECK(nullptr, mc, "MoreController::MoreController return null pointer");
+
+            MoreController_godrive(mc);
+
+            // Clean up after ourselves
+            MoreController__deMoreController(mc);
+
+            return nm_action_result_silent();
+        }
+        
         if (!strcmp(arg1, "library") && (!strcmp(arg2, "dropbox") || !strcmp(arg2, "gdrive"))) {
             //libnickel 4.23.15505 * _ZN14MoreControllerC1Ev
             MoreController *(*MoreController__MoreController)(MoreController* _this);
@@ -135,6 +163,7 @@ NM_ACTION_(nickel_open) {
         else if (!strcmp(arg2, "pocket"))   sym_f = "_ZN15LibraryNavMixin17showPocketLibraryEv";       //libnickel 4.6 * _ZN15LibraryNavMixin17showPocketLibraryEv        
         else if (!strcmp(arg2, "instapaper")) sym_f = "_ZN15LibraryNavMixin21showInstapaperLibraryEv"; //libnickel 4.43.23418 * _ZN15LibraryNavMixin21showInstapaperLibraryEv
         else if (!strcmp(arg2, "dropbox"))  sym_f = "_ZN15LibraryNavMixin11showDropboxEv";             //libnickel 4.18.13737 4.22.15268 _ZN15LibraryNavMixin11showDropboxEv
+        else if (!strcmp(arg2, "godrive"))  sym_f = "_ZN14MoreController11googleDriveEv";             //libnickel 4.18.13737 4.22.15268 _ZN14MoreController11googleDriveEv
     } else if (!strcmp(arg1, "reading_life")) {
         sym_c = "_ZN19ReadingLifeNavMixinC1Ev"; //libnickel 4.6 * _ZN19ReadingLifeNavMixinC1Ev
         sym_d = "_ZN19ReadingLifeNavMixinD1Ev"; //libnickel 4.6 * _ZN19ReadingLifeNavMixinD1Ev
